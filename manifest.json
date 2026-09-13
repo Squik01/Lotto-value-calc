@@ -1,0 +1,14 @@
+{
+  "name": "Lottery Value Check",
+  "short_name": "LottoCheck",
+  "description": "Personal value-for-money checker for UK lottery draws",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#10151c",
+  "theme_color": "#10151c",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

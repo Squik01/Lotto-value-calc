@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lottery Value Check</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LottoCheck">
+<meta name="theme-color" content="#10151c">
+<style>
+  :root{
+    --bg: #10151c;
+    --panel: #171e27;
+    --line: #2a333f;
+    --ink: #e7e4dc;
+    --ink-dim: #8b93a1;
+    --gold: #c9a15c;
+    --green: #6fae7f;
+    --amber: #cfa64a;
+    --rust: #c1614a;
+    --mono: "SF Mono", "Roboto Mono", "Consolas", monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    padding:28px 18px 60px;
+  }
+  .wrap{ max-width:640px; margin:0 auto; }
+
+  h1{ font-size:1.5rem; font-weight:600; letter-spacing:-0.01em; margin:0 0 4px; }
+  .sub{ color:var(--ink-dim); font-size:0.92rem; line-height:1.5; margin:0 0 28px; max-width:54ch; }
+  .sub b{ color: var(--ink); font-weight: 600; }
+
+  .benchmark{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding:14px 16px; border:1px solid var(--line); border-left:3px solid var(--gold);
+    background:var(--panel); margin-bottom:26px;
+  }
+  .benchmark .label{ font-size:0.85rem; color:var(--ink-dim); }
+  .benchmark .value{ font-family:var(--mono); font-size:1.15rem; color:var(--gold); }
+
+  .game{ border-top:1px solid var(--line); padding:18px 0; }
+  .game:last-of-type{ border-bottom:1px solid var(--line); }
+
+  .game-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .game-name{ font-size:1rem; font-weight:600; }
+  .confidence{ font-size:0.72rem; color:var(--ink-dim); }
+  .next-draw{ font-size:0.78rem; color:var(--gold); margin-bottom:12px; }
+
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .field{ flex:1; min-width:120px; }
+  .field label{ display:block; font-size:0.75rem; color:var(--ink-dim); margin-bottom:5px; }
+  .field input[type=number]{
+    width:100%; background:var(--panel); border:1px solid var(--line); color:var(--ink);
+    font-family:var(--mono); font-size:0.95rem; padding:8px 10px;
+  }
+  .field input[type=number]:focus{ outline:1px solid var(--gold); border-color:var(--gold); }
+
+  .result-row{ display:flex; align-items:center; gap:14px; }
+  .bar-track{ flex:1; height:10px; background:var(--line); position:relative; }
+  .bar-fill{ height:100%; background:var(--ink-dim); transition: width 0.25s ease, background 0.25s ease; }
+  .bar-fill.play{ background:var(--green); }
+  .bar-fill.marginal{ background:var(--amber); }
+  .bar-fill.skip{ background:var(--rust); }
+  .bench-mark{ position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--gold); left:33.9%; }
+  .index-value{ font-family:var(--mono); font-size:1.05rem; min-width:64px; text-align:right; }
+  .verdict{ font-size:0.72rem; font-weight:600; padding:4px 9px; min-width:64px; text-align:center; }
+  .verdict.play{ background:rgba(111,174,127,0.15); color:var(--green); }
+  .verdict.marginal{ background:rgba(207,166,74,0.15); color:var(--amber); }
+  .verdict.skip{ background:rgba(193,97,74,0.15); color:var(--rust); }
+
+  .note{ font-size:0.75rem; color:var(--ink-dim); margin-top:10px; line-height:1.5; }
+
+  .calib{ margin-top:14px; border-top:1px dashed var(--line); padding-top:12px; }
+  .calib-toggle{ font-size:0.75rem; color:var(--ink-dim); cursor:pointer; text-decoration:underline; text-underline-offset:2px; background:none; border:none; padding:0; font-family:var(--sans); }
+  .calib-body{ display:none; margin-top:10px; }
+  .calib-body.open{ display:block; }
+  .calib-row{ display:flex; gap:8px; margin-bottom:8px; align-items:flex-end; }
+  .calib-row .field{ min-width:0; }
+  .calib-row button{
+    background:var(--gold); color:#10151c; border:none; font-weight:600;
+    font-size:0.78rem; padding:8px 12px; cursor:pointer; white-space:nowrap;
+  }
+  .calib-list{ font-size:0.72rem; color:var(--ink-dim); margin:6px 0; line-height:1.6; }
+  .calib-fit{ font-size:0.72rem; color:var(--gold); font-family:var(--mono); }
+  .calib-reset{ font-size:0.7rem; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; margin-top:4px; font-family:var(--sans); }
+
+  details{ margin-top:30px; border-top:1px solid var(--line); padding-top:16px; }
+  summary{ cursor:pointer; font-size:0.85rem; color:var(--ink-dim); }
+  details p, details ul{ font-size:0.8rem; color:var(--ink-dim); line-height:1.6; }
+  details li{ margin-bottom:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Lottery Value Check</h1>
+  <p class="sub" id="dataSourceNote">Draw days and Millionaire Maker odds are detected automatically. Loading jackpot data…</p>
+
+  <div class="benchmark">
+    <span class="label">Set For Life benchmark (fixed)</span>
+    <span class="value">20.3p / £1</span>
+  </div>
+
+  <!-- LOTTO -->
+  <div class="game">
+    <div class="game-head">
+      <span class="game-name">Lotto</span>
+      <span class="confidence">Medium confidence</span>
+    </div>
+    <div class="next-draw" id="lottoNextDraw">–</div>
+    <div class="controls">
+      <div class="field">
+        <label for="lottoJackpot">Jackpot (£m)</label>
+        <input type="number" id="lottoJackpot" step="0.1" min="2">
+      </div>
+    </div>
+    <div class="result-row">
+      <div class="bar-track"><div class="bench-mark"></div><div class="bar-fill" id="lottoBar"></div></div>
+      <span class="index-value" id="lottoValue">–</span>
+      <span class="verdict" id="lottoVerdict">–</span>
+    </div>
+    <div class="calib">
+      <button class="calib-toggle" data-target="lottoCalib">+ Log real ticket sales to sharpen this estimate</button>
+      <div class="calib-body" id="lottoCalib">
+        <div class="calib-row">
+          <div class="field"><label>Jackpot (£m)</label><input type="number" id="lottoCalibJ" step="0.1"></div>
+          <div class="field"><label>Tickets sold (millions)</label><input type="number" id="lottoCalibS" step="0.1"></div>
+          <button onclick="addCalib('lotto')">Add</button>
+        </div>
+        <div class="calib-list" id="lottoCalibList"></div>
+        <div class="calib-fit" id="lottoCalibFit"></div>
+        <button class="calib-reset" onclick="resetCalib('lotto')">Reset to default curve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EUROMILLIONS -->
+  <div class="game">
+    <div class="game-head">
+      <span class="game-name">EuroMillions</span>
+      <span class="confidence">High confidence</span>
+    </div>
+    <div class="next-draw" id="emNextDraw">–</div>
+    <div class="controls">
+      <div class="field">
+        <label for="emJackpot">Jackpot (£m)</label>
+        <input type="number" id="emJackpot" step="1" min="15">
+      </div>
+    </div>
+    <div class="result-row">
+      <div class="bar-track"><div class="bench-mark"></div><div class="bar-fill" id="emBar"></div></div>
+      <span class="index-value" id="emValue">–</span>
+      <span class="verdict" id="emVerdict">–</span>
+    </div>
+    <div class="calib">
+      <button class="calib-toggle" data-target="emCalib">+ Log real ticket sales to sharpen this estimate</button>
+      <div class="calib-body" id="emCalib">
+        <div class="calib-row">
+          <div class="field"><label>Jackpot (£m)</label><input type="number" id="emCalibJ" step="1"></div>
+          <div class="field"><label>Tickets sold (millions)</label><input type="number" id="emCalibS" step="1"></div>
+          <button onclick="addCalib('em')">Add</button>
+        </div>
+        <div class="calib-list" id="emCalibList"></div>
+        <div class="calib-fit" id="emCalibFit"></div>
+        <button class="calib-reset" onclick="resetCalib('em')">Reset to default curve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POWERBALL -->
+  <div class="game">
+    <div class="game-head">
+      <span class="game-name">Powerball (UK)</span>
+      <span class="confidence" id="pbConfidence">Low confidence — no data logged yet</span>
+    </div>
+    <div class="next-draw" id="pbNextDraw">–</div>
+    <div class="controls">
+      <div class="field">
+        <label for="pbJackpot">Jackpot (£m, annuity)</label>
+        <input type="number" id="pbJackpot" step="10" min="12">
+      </div>
+    </div>
+    <div class="result-row">
+      <div class="bar-track"><div class="bench-mark"></div><div class="bar-fill" id="pbBar"></div></div>
+      <span class="index-value" id="pbValue">–</span>
+      <span class="verdict" id="pbVerdict">–</span>
+    </div>
+    <p class="note" id="pbNote">Best-case estimate — assumes no jackpot split, since there's no sales data yet. Log real figures below as they get reported and this will start discounting for splits automatically.</p>
+    <div class="calib">
+      <button class="calib-toggle" data-target="pbCalib">+ Log real ticket sales to sharpen this estimate</button>
+      <div class="calib-body" id="pbCalib">
+        <div class="calib-row">
+          <div class="field"><label>Jackpot (£m)</label><input type="number" id="pbCalibJ" step="10"></div>
+          <div class="field"><label>Tickets sold (millions)</label><input type="number" id="pbCalibS" step="1"></div>
+          <button onclick="addCalib('pb')">Add</button>
+        </div>
+        <div class="calib-list" id="pbCalibList"></div>
+        <div class="calib-fit" id="pbCalibFit"></div>
+        <button class="calib-reset" onclick="resetCalib('pb')">Reset to default curve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THUNDERBALL (fixed) -->
+  <div class="game">
+    <div class="game-head">
+      <span class="game-name">Thunderball</span>
+      <span class="confidence">Fixed — no jackpot rollover</span>
+    </div>
+    <div class="next-draw" id="tbNextDraw">–</div>
+    <div class="result-row">
+      <div class="bar-track"><div class="bench-mark"></div><div class="bar-fill skip" style="width:8.4%"></div></div>
+      <span class="index-value">6.2p</span>
+      <span class="verdict skip">SKIP</span>
+    </div>
+  </div>
+
+  <details>
+    <summary>How this is calculated</summary>
+    <p>Each index is the expected pounds returned per £1 staked, counting only prize tiers of £20,000 or more. Jackpot tiers are discounted for the chance of a shared win, using a sales-vs-jackpot curve fitted (log-log regression) to whatever data points exist for that game. EuroMillions ships pre-loaded with two real data points (2019 rollover data and 2025-26 Superdraw figures). Lotto and Powerball start with no logged data — Lotto falls back to EuroMillions' curve as a rough stand-in, Powerball falls back to no discount at all (optimistic ceiling) until you log real sales figures for it, at which point the curve refits automatically and keeps improving as you add more points.</p>
+    <ul>
+      <li><b>SKIP</b> — below Set For Life's 20.3p benchmark.</li>
+      <li><b>MARGINAL</b> — above benchmark, but within a margin thin enough that the underlying assumptions could tip it either way.</li>
+      <li><b>PLAY</b> — clearly ahead, with room for the assumptions to be somewhat wrong.</li>
+    </ul>
+    <p>Draw days: Lotto (Wed/Sat), EuroMillions (Tue/Fri — sets Millionaire Maker odds automatically), Powerball (results land Tue/Thu/Sun UK time, math is the same every draw). Logged data and jackpot entries are saved on this device only. Always check live odds and prize breakdowns on national-lottery.co.uk before playing.</p>
+  </details>
+
+</div>
+
+<script>
+const DEFAULTS = {
+  lotto:  { a: Math.log(22) - 0.55*Math.log(4),  b: 0.55, fallback: true,  seedJ: 3.8 },
+  em:     { a: Math.log(16.4) - 0.55*Math.log(15), b: 0.55, fallback: false, seedJ: 76 },
+  pb:     { a: null, b: null, fallback: true, noDiscount: true, seedJ: 500 }
+};
+const SEED_POINTS = {
+  lotto: [],
+  em: [ {j:15, s:16.4}, {j:110, s:50} ],
+  pb: []
+};
+
+let store = {};
+
+async function loadCalib(game){
+  try{
+    const raw = localStorage.getItem('lottery-calib-'+game);
+    return raw ? JSON.parse(raw) : SEED_POINTS[game].slice();
+  }catch(e){
+    return SEED_POINTS[game].slice();
+  }
+}
+async function saveCalib(game, points){
+  try{ localStorage.setItem('lottery-calib-'+game, JSON.stringify(points)); }catch(e){}
+}
+
+function fitCurve(points){
+  if(points.length < 2) return null;
+  const xs = points.map(p=>Math.log(p.j)), ys = points.map(p=>Math.log(p.s));
+  const n = xs.length, xbar = xs.reduce((a,b)=>a+b,0)/n, ybar = ys.reduce((a,b)=>a+b,0)/n;
+  let num=0, den=0;
+  for(let i=0;i<n;i++){ num += (xs[i]-xbar)*(ys[i]-ybar); den += (xs[i]-xbar)**2; }
+  if(den === 0) return null;
+  const b = num/den, a = ybar - b*xbar;
+  return {a,b};
+}
+
+function salesAt(game, J){
+  const points = store[game];
+  const fit = fitCurve(points);
+  if(fit) return Math.exp(fit.a) * Math.pow(Math.max(J,0.1), fit.b);
+  if(DEFAULTS[game].noDiscount) return null; // signals "no discount"
+  return Math.exp(DEFAULTS[game].a) * Math.pow(Math.max(J,0.1), DEFAULTS[game].b);
+}
+
+function shareFactor(lambda){
+  if(lambda === null) return 1;
+  if(lambda <= 0) return 1;
+  return (1 - Math.exp(-lambda)) / lambda;
+}
+
+function classify(idx){
+  if(idx < 20.3) return 'skip';
+  if(idx < 24.4) return 'marginal';
+  return 'play';
+}
+
+function applyResult(prefix, idx){
+  const bar = document.getElementById(prefix+'Bar');
+  const val = document.getElementById(prefix+'Value');
+  const verdict = document.getElementById(prefix+'Verdict');
+  const cls = classify(idx);
+  const pct = Math.min(100, (idx/60)*100);
+  bar.style.width = pct+'%';
+  bar.className = 'bar-fill '+cls;
+  val.textContent = idx.toFixed(1)+'p';
+  verdict.textContent = cls === 'skip' ? 'SKIP' : (cls === 'marginal' ? 'MARGINAL' : 'PLAY');
+  verdict.className = 'verdict '+cls;
+}
+
+function nextDrawDate(validDays){
+  const now = new Date();
+  for(let i=0;i<8;i++){
+    const d = new Date(now); d.setDate(now.getDate()+i);
+    if(validDays.includes(d.getDay())) return d;
+  }
+  return now;
+}
+function fmtDate(d){
+  return d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function calcLotto(){
+  const J = parseFloat(document.getElementById('lottoJackpot').value) || 0;
+  const fixed = 2 * (1000000/7509579);
+  const sales = salesAt('lotto', J);
+  const lambda = sales===null ? null : (sales*1e6)/45057474;
+  const term = 2 * (J*1e6*shareFactor(lambda))/45057474;
+  applyResult('lotto', (fixed+term)/2*100);
+}
+
+function calcEM(){
+  const J = parseFloat(document.getElementById('emJackpot').value) || 0;
+  const nd = nextDrawDate([2,5]);
+  const mmOdds = nd.getDay() === 2 ? 3570000 : 5080000;
+  const fixed = (1000000/mmOdds) + (169000/6991908);
+  const sales = salesAt('em', J);
+  const lambda = sales===null ? null : (sales*1e6)/139838160;
+  const term = (J*1e6*shareFactor(lambda))/139838160;
+  applyResult('em', (fixed+term)/2.5*100);
+}
+
+function calcPB(){
+  const J = parseFloat(document.getElementById('pbJackpot').value) || 0;
+  const fixed = (1000000/11688053) + (39000/913129);
+  const sales = salesAt('pb', J);
+  const lambda = sales===null ? null : (sales*1e6)/292201338;
+  const term = (J*1e6*shareFactor(lambda))/292201338;
+  applyResult('pb', (fixed+term)/4*100);
+  document.getElementById('pbConfidence').textContent =
+    store.pb.length >= 2 ? ('Calibrated from '+store.pb.length+' logged draws') : 'Low confidence — no data logged yet';
+  document.getElementById('pbNote').style.display = store.pb.length >= 2 ? 'none' : 'block';
+}
+
+function renderCalibList(game){
+  const list = document.getElementById(game+'CalibList');
+  const fitEl = document.getElementById(game+'CalibFit');
+  const points = store[game];
+  if(points.length === 0){
+    list.textContent = 'No data points logged yet.';
+  } else {
+    list.innerHTML = points.map((p,i)=>
+      `£${p.j}m → ${p.s}m tickets <button onclick="removeCalib('${game}',${i})" style="background:none;border:none;color:var(--rust);cursor:pointer;font-size:0.7rem;">remove</button>`
+    ).join('<br>');
+  }
+  const fit = fitCurve(points);
+  if(fit){
+    fitEl.textContent = `Fitted: sales ≈ ${Math.exp(fit.a).toFixed(2)} × jackpot^${fit.b.toFixed(2)}`;
+  } else if(DEFAULTS[game].noDiscount){
+    fitEl.textContent = 'Need 2+ points to fit a curve — using no-discount ceiling until then.';
+  } else {
+    fitEl.textContent = 'Need 2+ points to fit a curve — using default estimate until then.';
+  }
+}
+
+async function addCalib(game){
+  const j = parseFloat(document.getElementById(game+'CalibJ').value);
+  const s = parseFloat(document.getElementById(game+'CalibS').value);
+  if(!j || !s) return;
+  store[game].push({j,s});
+  await saveCalib(game, store[game]);
+  document.getElementById(game+'CalibJ').value = '';
+  document.getElementById(game+'CalibS').value = '';
+  renderCalibList(game);
+  recalcAll();
+}
+async function removeCalib(game, idx){
+  store[game].splice(idx,1);
+  await saveCalib(game, store[game]);
+  renderCalibList(game);
+  recalcAll();
+}
+async function resetCalib(game){
+  store[game] = SEED_POINTS[game].slice();
+  await saveCalib(game, store[game]);
+  renderCalibList(game);
+  recalcAll();
+}
+
+function recalcAll(){ calcLotto(); calcEM(); calcPB(); }
+
+document.querySelectorAll('.calib-toggle').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    target.classList.toggle('open');
+  });
+});
+
+document.getElementById('lottoJackpot').addEventListener('input', calcLotto);
+document.getElementById('emJackpot').addEventListener('input', calcEM);
+document.getElementById('pbJackpot').addEventListener('input', calcPB);
+
+async function fetchLiveJackpots(){
+  try{
+    const resp = await fetch('./jackpots.json', {cache: 'no-store'});
+    if(!resp.ok) throw new Error('no file');
+    return await resp.json();
+  }catch(e){
+    return null;
+  }
+}
+
+function timeAgo(iso){
+  if(!iso) return null;
+  const mins = Math.round((Date.now() - new Date(iso).getTime())/60000);
+  if(mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins/60);
+  if(hrs < 48) return `${hrs}h ago`;
+  return `${Math.round(hrs/24)}d ago`;
+}
+
+async function init(){
+  store.lotto = await loadCalib('lotto');
+  store.em = await loadCalib('em');
+  store.pb = await loadCalib('pb');
+
+  const lottoND = nextDrawDate([3,6]);
+  document.getElementById('lottoNextDraw').textContent = 'Next draw: ' + fmtDate(lottoND);
+
+  const emND = nextDrawDate([2,5]);
+  document.getElementById('emNextDraw').textContent = 'Next draw: ' + fmtDate(emND) +
+    (emND.getDay()===2 ? ' (Tuesday — better Millionaire Maker odds)' : ' (Friday)');
+
+  const pbND = nextDrawDate([2,4,0]);
+  document.getElementById('pbNextDraw').textContent = 'Next result: ' + fmtDate(pbND) + ' (UK time)';
+
+  const tbND = nextDrawDate([2,5]);
+  document.getElementById('tbNextDraw').textContent = 'Next draw: ' + fmtDate(tbND);
+
+  const live = await fetchLiveJackpots();
+  const note = document.getElementById('dataSourceNote');
+
+  if(live){
+    document.getElementById('lottoJackpot').value = live.lotto;
+    document.getElementById('emJackpot').value = live.em;
+    document.getElementById('pbJackpot').value = live.pb;
+    const ago = timeAgo(live.updated);
+    const staleList = (live.stale && live.stale.length) ? live.stale.join(', ') : null;
+    note.innerHTML = `Jackpots auto-updated ${ago || 'recently'}.` +
+      (staleList ? ` Could not confirm: <b>${staleList}</b> this cycle — figure shown is its last known value.` : ' All three confirmed.') +
+      ` You can still edit any field by hand.`;
+  } else {
+    document.getElementById('lottoJackpot').value = lottoND.getDay() === 3 ? 2 : 3.8;
+    document.getElementById('emJackpot').value = DEFAULTS.em.seedJ;
+    document.getElementById('pbJackpot').value = DEFAULTS.pb.seedJ;
+    note.textContent = 'No live jackpot feed found — enter today\'s figures manually below.';
+  }
+
+  renderCalibList('lotto');
+  renderCalibList('em');
+  renderCalibList('pb');
+  recalcAll();
+}
+init();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
