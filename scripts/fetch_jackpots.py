@@ -55,7 +55,7 @@ def fetch_jackpots():
     soup = BeautifulSoup(resp.text, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-       anchors = {
+    anchors = {
         "lotto": ("2.00", "lotto"),
         "em": ("2.50", "euromillions"),
         "pb": ("4.00", "powerball"),
@@ -72,7 +72,6 @@ def fetch_jackpots():
             found[key] = value * 1000 if unit.upper() == "B" else (value / 1000 if unit.upper() == "K" else value)
 
     return found
-
 
 def load_existing():
     if JACKPOTS_FILE.exists():
