@@ -62,7 +62,13 @@ def fetch_jackpots():
     }
     for key, (price, slug) in anchors.items():
         m = re.search(rf"Play for £{re.escape(price)},\s*{re.escape(slug)}\b", page_text, re.IGNORECASE)
-        if not m:
+               if not m:
+            idx = page_text.lower().find(slug)
+            if idx != -1:
+                print(f"DEBUG {key}: anchor regex failed, but found '{slug}' at position {idx}:")
+                print(f"  context: ...{page_text[max(0,idx-100):idx+150]}...")
+            else:
+                print(f"DEBUG {key}: '{slug}' not found anywhere on the page.")
             continue
         window = page_text[max(0, m.start() - 250): m.start()]
         matches = re.findall(r"£\s?([\d,.]+)\s?([MBK])", window, re.IGNORECASE)
