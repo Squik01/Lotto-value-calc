@@ -55,21 +55,21 @@ def fetch_jackpots():
     soup = BeautifulSoup(resp.text, "html.parser")
     page_text = soup.get_text(" ", strip=True)
 
-    patterns = {
-        "lotto": r"\bLotto\b(?!\s*HotPicks)",
-        "em": r"\bEuroMillions\b(?!\s*HotPicks)",
-        "pb": r"\bPowerball\b",
+       anchors = {
+        "lotto": ("2.00", "lotto"),
+        "em": ("2.50", "euromillions"),
+        "pb": ("4.00", "powerball"),
     }
-    for key, name_pattern in patterns.items():
-        for m in re.finditer(name_pattern, page_text, re.IGNORECASE):
-            window = page_text[m.end(): m.end() + 150]
-            val = parse_money_to_millions(window)
-            if val is None:
-                window_before = page_text[max(0, m.start() - 150): m.start()]
-                val = parse_money_to_millions(window_before)
-            if val is not None:
-                found[key] = val
-                break
+    for key, (price, slug) in anchors.items():
+        m = re.search(rf"Play for £{re.escape(price)},\s*{re.escape(slug)}\b", page_text, re.IGNORECASE)
+        if not m:
+            continue
+        window = page_text[max(0, m.start() - 250): m.start()]
+        matches = re.findall(r"£\s?([\d,.]+)\s?([MBK])", window, re.IGNORECASE)
+        if matches:
+            value, unit = matches[-1]
+            value = float(value.replace(",", ""))
+            found[key] = value * 1000 if unit.upper() == "B" else (value / 1000 if unit.upper() == "K" else value)
 
     return found
 
