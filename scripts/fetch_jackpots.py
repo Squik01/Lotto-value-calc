@@ -62,7 +62,7 @@ def fetch_jackpots():
     }
     for key, (price, slug) in anchors.items():
         m = re.search(rf"Play for £{re.escape(price)},\s*{re.escape(slug)}\b", page_text, re.IGNORECASE)
-               if not m:
+        if not m:
             idx = page_text.lower().find(slug)
             if idx != -1:
                 print(f"DEBUG {key}: anchor regex failed, but found '{slug}' at position {idx}:")
@@ -76,6 +76,8 @@ def fetch_jackpots():
             value, unit = matches[-1]
             value = float(value.replace(",", ""))
             found[key] = value * 1000 if unit.upper() == "B" else (value / 1000 if unit.upper() == "K" else value)
+        else:
+            print(f"DEBUG {key}: anchor matched but no £ value found in preceding text: ...{window}...")
 
     return found
 
