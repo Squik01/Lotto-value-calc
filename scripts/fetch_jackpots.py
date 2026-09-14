@@ -38,14 +38,18 @@ def get_page_text(url):
 
 
 def word_amount_to_millions(number_str, unit):
-    value = float(number_str.replace(",", ""))
+    raw = number_str.replace(",", "")
+    value = float(raw)
     unit = (unit or "").lower()
     if unit in ("billion", "b"):
         return value * 1000
     if unit in ("thousand", "k"):
         return value / 1000
-    if unit in ("million", "m", ""):
+    if unit in ("million", "m"):
         return value
+    # no unit word at all — likely a full pound figure like "122,500,519"
+    if "," in number_str or value > 1000:
+        return value / 1_000_000
     return value
 
 
